@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use noise::*;
 use std::collections::HashMap;
 
 pub const CHUNK_SIZE: usize = 32 * 32 * 32;
@@ -15,6 +16,7 @@ type ChunkMap = HashMap<IVec3, Chunk>;
 
 pub fn generate_voxel_data(chunk_pos: IVec3) -> Vec<Voxel> {
     let mut voxels = Vec::with_capacity(CHUNK_SIZE);
+    let simplex = ScalePoint::new(SuperSimplex::new(142313124)).set_scale(0.065);
 
     for z in 0..32 {
         for y in 0..32 {
@@ -24,7 +26,7 @@ pub fn generate_voxel_data(chunk_pos: IVec3) -> Vec<Voxel> {
                     y + chunk_pos.y * 32,
                     z * chunk_pos.z * 32,
                 );
-                let is_solid = true;
+                let is_solid = simplex.get([pos.x as f64, pos.y as f64, pos.z as f64]) > 0f64;
                 voxels.push(Voxel { is_solid });
             }
         }
@@ -61,20 +63,21 @@ fn generate_cube_vertices(pos: Vec3) -> Vec<[f32; 3]> {
 fn generate_cube_indices(start: u32) -> Vec<u32> {
     vec![
         0, 1, 2, 2, 3, 0, // Top
-        7, 5, 6, 7, 5, 4, // Bottom
+        5, 7, 6, 5, 4, 7, // Bottom
         7, 0, 4, 4, 0, 3, // Left
         6, 5, 1, 1, 5, 2, // Right
         7, 1, 0, 7, 6, 1, // Front
-        5, 4, 3, 4, 3, 2, // Back
+        5, 4, 3, 3, 2, 5, // Back
     ]
     .iter()
     .map(|index| index + start)
     .collect()
 }
 
-pub fn generate_mesh(chunk_map: &ChunkMap) -> (Vec<[f32; 3]>, Vec<u32>) {
+pub fn generate_mesh(chunk_map: &ChunkMap) -> (Vec<[f32; 3]>, Vec<u32>, Vec<[f32; 3]>) {
     let mut vertices = Vec::new();
     let mut indices = Vec::new();
+    let mut normals = Vec::new();
 
     for (chunk_pos, chunk) in chunk_map.iter() {
         let chunk_offset = Vec3::new(
@@ -104,10 +107,11 @@ pub fn generate_mesh(chunk_map: &ChunkMap) -> (Vec<[f32; 3]>, Vec<u32>) {
 
                     vertices.extend(cube_vertices);
                     indices.extend(cube_indices);
+                    normals.extend([[1., 0., 0.]; 8]);
                 }
             }
         }
     }
 
-    (vertices, indices)
+    (vertices, indices, normals)
 }
