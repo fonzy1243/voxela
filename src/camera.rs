@@ -17,7 +17,7 @@ pub struct CameraController {
     pub velocity: Vec3,
 }
 
-impl Default for Camera {
+impl Default for CameraController {
     fn default() -> Self {
         todo!()
     }
